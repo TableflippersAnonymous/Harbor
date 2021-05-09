@@ -1,10 +1,14 @@
 package xyz.nkomarn.harbor;
 
-import com.earth2me.essentials.Essentials;
 import org.bukkit.World;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import xyz.nkomarn.harbor.afk.AFKPlusAfkTrackerImpl;
+import xyz.nkomarn.harbor.afk.EssentialsAfkTrackerImpl;
+import xyz.nkomarn.harbor.afk.FallbackAfkTrackerImpl;
+import xyz.nkomarn.harbor.afk.IAfkTracker;
+import xyz.nkomarn.harbor.afk.NullAfkTrackerImpl;
 import xyz.nkomarn.harbor.command.ForceSkipCommand;
 import xyz.nkomarn.harbor.command.HarborCommand;
 import xyz.nkomarn.harbor.listener.BedListener;
@@ -15,24 +19,31 @@ import xyz.nkomarn.harbor.util.Metrics;
 import xyz.nkomarn.harbor.util.PlayerManager;
 
 import java.util.Arrays;
-import java.util.Optional;
+import java.util.Locale;
 
 public class Harbor extends JavaPlugin {
+
+    private static Harbor instance;
 
     private Config config;
     private Checker checker;
     private Messages messages;
     private PlayerManager playerManager;
-    private Essentials essentials;
+    private IAfkTracker afkTracker;
+
+    public static Harbor getInstance() {
+        return instance;
+    }
 
     public void onEnable() {
-        PluginManager pluginManager = getServer().getPluginManager();
-
+        instance = this;
+        final PluginManager pluginManager = getServer().getPluginManager();
         config = new Config(this);
         checker = new Checker(this);
         messages = new Messages(this);
+        afkTracker = initializeAfktracker();
+        getLogger().info("Using " + afkTracker.getClass().getSimpleName() + " for AFK detection");
         playerManager = new PlayerManager(this);
-        essentials = (Essentials) pluginManager.getPlugin("Essentials");
 
         Arrays.asList(
                 messages,
@@ -43,13 +54,27 @@ public class Harbor extends JavaPlugin {
         getCommand("harbor").setExecutor(new HarborCommand(this));
         getCommand("forceskip").setExecutor(new ForceSkipCommand(this));
 
-        if (essentials == null) {
-            getLogger().info("Essentials not present- registering fallback AFK detection system.");
-            playerManager.registerFallbackListeners();
-        }
 
         if (config.getBoolean("metrics")) {
             new Metrics(this);
+        }
+    }
+
+    private IAfkTracker initializeAfktracker() {
+        if(!config.getBoolean("afk-detection.enabled"))
+            return new NullAfkTrackerImpl();
+        final String preferredAfkTracker = config.getString("afk-detection.provider");
+        switch(preferredAfkTracker.toLowerCase(Locale.ROOT)) {
+            case "essentials":
+                return new EssentialsAfkTrackerImpl(this);
+            case "afkplus":
+                return new AFKPlusAfkTrackerImpl(this);
+            case "builtin":
+                return new FallbackAfkTrackerImpl(this);
+            default:
+                getLogger().info("No AFK detection provider selected; trying our best...");
+            case "auto":
+                return IAfkTracker.pickBestAvailable(this);
         }
     }
 
@@ -86,7 +111,7 @@ public class Harbor extends JavaPlugin {
     }
 
     @NotNull
-    public Optional<Essentials> getEssentials() {
-        return Optional.ofNullable(essentials);
+    public IAfkTracker getAfkTracker() {
+        return afkTracker;
     }
 }

@@ -29,7 +29,8 @@ exclusions:
 # Essentials API is used for AFK detection when available- otherwise a fallback system is used
 afk-detection:
   enabled: true
-  timeout: 15 # Time in minutes until a player is considered AFK
+  provider: auto
+  timeout: 15 # Time in minutes until a player is considered AFK when using fallback system
 
 # Blacklist for worlds- Harbor will ignore these worlds
 blacklisted-worlds:
