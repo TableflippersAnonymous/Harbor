@@ -144,7 +144,12 @@ public class Messages implements Listener {
                 .replace("[sleeping]", String.valueOf(checker.getSleepingPlayers(world).size()))
                 .replace("[players]", String.valueOf(checker.getPlayers(world)))
                 .replace("[needed]", String.valueOf(checker.getSkipAmount(world)))
-                .replace("[more]", String.valueOf(checker.getNeeded(world))));
+                .replace("[more]", String.valueOf(checker.getNeeded(world)))
+                .replace("[plural-sleeping]",
+                        (checker.getSleepingPlayers(world).size() > 1 ?
+                                config.getString("messages.miscellaneous.multiple-players") :
+                                config.getString("messages.miscellaneous.singular-player")))
+        );
     }
 
     @NotNull
